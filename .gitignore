@@ -3,6 +3,7 @@
 *.ko
 *.obj
 *.elf
+*.hex
 
 # Precompiled Headers
 *.gch
@@ -31,3 +32,7 @@
 
 # Debug files
 *.dSYM/
+/Debug/*
+/systemview/*
+/system/include/systemview/*
+/system/src/systemview/*

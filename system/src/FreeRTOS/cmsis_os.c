@@ -26,7 +26,7 @@
  *  
  *----------------------------------------------------------------------------
  *
- * Portions Copyright © 2016 STMicroelectronics International N.V. All rights reserved.
+ * Portions Copyright ï¿½ 2016 STMicroelectronics International N.V. All rights reserved.
  * Portions Copyright (c) 2013 ARM LIMITED
  * All rights reserved.
  * Redistribution and use in source and binary forms, with or without
@@ -356,7 +356,7 @@ osEvent osWait (uint32_t millisec);
 * @retval  timer ID for reference by other functions or NULL in case of error.
 * @note   MUST REMAIN UNCHANGED: \b osTimerCreate shall be consistent in every CMSIS-RTOS.
 */
-osTimerId osTimerCreate (const osTimerDef_t *timer_def, os_timer_type type, void *argument)
+
 {
 #if (configUSE_TIMERS == 1)
 

@@ -48,8 +48,11 @@
 /* USER CODE BEGIN Includes */
 //
 
-//FreeRTOS running/working
+//FreeRTOS running/working, trying to add system view
 
+//#include "SEGGER_SYSVIEW.h"
+
+#include "GPS.h"
 
 
 /* USER CODE END Includes */
@@ -75,6 +78,9 @@ osThreadId blinkTaskHandle;
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 
+
+///working GPS / DMA
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -90,11 +96,16 @@ static void MX_USART3_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_ADC3_Init(void);
-void StartDefaultTask(void const * argument);
-void StartBlinkTask(void const * argument);
+void mainTask(void const * argument);//prints and blinks
+void GPSProcessTask(void const * argument);//handles GPS processing
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+volatile uint8_t rx2Buff; //incoming uart2 byte (DMA) PA2tx | PA3rx
+volatile uint8_t rx3Buff; //incoming uart3 byte
+
+volatile uint16_t dataArrived = 0;
+GPS_pub myGPSPUB;
 
 /* USER CODE END PFP */
 
@@ -130,6 +141,14 @@ int main(void)
   MX_ADC3_Init();
 
   /* USER CODE BEGIN 2 */
+  //SEGGER_SYSVIEW_Conf();   /* Configure and initialize SystemView*/
+  //SEGGER_SYSVIEW_Start();
+
+  GPS_init();
+
+  HAL_UART_Receive_DMA(&huart2, &rx2Buff, 1);//only call once before main loop
+  //HAL_UART_Receive_IT(&huart3, &data, 1); //call once, then call again in main when data c
+
 
   /* USER CODE END 2 */
 
@@ -143,18 +162,23 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
+
+
+
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+  osThreadDef(mainTask, mainTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(mainTask), NULL);
 
-  osThreadDef(blinkTask, StartBlinkTask, osPriorityNormal, 0, 128);
-  blinkTaskHandle = osThreadCreate(osThread(blinkTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+
+  osThreadDef(GPSTask, GPSProcessTask, osPriorityNormal, 0, 128); //temporary
+  blinkTaskHandle = osThreadCreate(osThread(GPSTask), NULL);
+
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -179,6 +203,24 @@ int main(void)
   /* USER CODE END 3 */
 
 }
+
+//all incoming uart messages go thru this handler after data arrives
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+//printf("[data arrived]\n");
+
+	if(huart->Instance == USART2){
+		//dataArrived = 1;
+		//xQueueSendToBackFromISR(queue_GPS,&rx2Buff,NULL);
+		GPS_putByte(rx2Buff);
+	}
+	/*
+	else if(huart->Instance == USART3) { //for GEIGER COUNTER
+		USART3dataArrived = 1;
+	}*/
+}
+
+
+
 
 /** System Clock Configuration
 */
@@ -623,28 +665,37 @@ static void MX_GPIO_Init(void)
 /* USER CODE END 4 */
 
 /* StartDefaultTask function */
-void StartDefaultTask(void const * argument)
+void mainTask(void const * argument)
 {
 
   /* USER CODE BEGIN 5 */
+
+
   /* Infinite loop */
   for(;;)
   {
+
    HAL_GPIO_TogglePin(GPIOD,LD6_Pin);
-   osDelay(500);
+   getGPS(&myGPSPUB);
+   osDelay(1500);
+   //printf("lat:%f, lon:%f\n", getLatitude(), getLongitude());
    }
   /* USER CODE END 5 */
 }
 
-void StartBlinkTask(void const * argument)
+void GPSProcessTask(void const * argument)
 {
 
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
   for(;;)
   {
-   HAL_GPIO_TogglePin(GPIOD,LD5_Pin);
-   osDelay(2000);
+
+   //check USART2queue for incoming GPS data and handle it
+	processGPS();
+
+   //HAL_GPIO_TogglePin(GPIOD,LD5_Pin);
+   //osDelay(2000);
    }
   /* USER CODE END 5 */ 
 }

@@ -93,6 +93,7 @@ uint8_t USART3dataArrived = 0;
 char* msg = "Hello World!\r\n";
 int num = 0;
 uint32_t lastime;
+
 /* USER CODE END 0 */
 
 int main(void)

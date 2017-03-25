@@ -42,7 +42,7 @@ src/main.o: ../src/main.c ../include/main.h \
  ../system/include/FreeRTOS/task.h ../system/include/FreeRTOS/list.h \
  ../system/include/FreeRTOS/timers.h ../system/include/FreeRTOS/queue.h \
  ../system/include/FreeRTOS/semphr.h \
- ../system/include/FreeRTOS/event_groups.h
+ ../system/include/FreeRTOS/event_groups.h ../include/GPS.h
 
 ../include/main.h:
 
@@ -143,3 +143,5 @@ src/main.o: ../src/main.c ../include/main.h \
 ../system/include/FreeRTOS/semphr.h:
 
 ../system/include/FreeRTOS/event_groups.h:
+
+../include/GPS.h:

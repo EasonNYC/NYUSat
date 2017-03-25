@@ -4,8 +4,10 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../src/GPS.c \
 ../src/_initialize_hardware.c \
 ../src/_write.c \
+../src/circarray.c \
 ../src/freertos.c \
 ../src/main.c \
 ../src/stm32f4xx_hal_msp.c \
@@ -14,8 +16,10 @@ C_SRCS += \
 ../src/system_stm32f4xx.c 
 
 OBJS += \
+./src/GPS.o \
 ./src/_initialize_hardware.o \
 ./src/_write.o \
+./src/circarray.o \
 ./src/freertos.o \
 ./src/main.o \
 ./src/stm32f4xx_hal_msp.o \
@@ -24,8 +28,10 @@ OBJS += \
 ./src/system_stm32f4xx.o 
 
 C_DEPS += \
+./src/GPS.d \
 ./src/_initialize_hardware.d \
 ./src/_write.d \
+./src/circarray.d \
 ./src/freertos.d \
 ./src/main.d \
 ./src/stm32f4xx_hal_msp.d \
