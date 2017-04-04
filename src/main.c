@@ -216,6 +216,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	/*
 	else if(huart->Instance == USART3) { //for GEIGER COUNTER
 		USART3dataArrived = 1;
+		if(rx2Buff == 0x1)
+			GeigerCntr++;
 	}*/
 }
 

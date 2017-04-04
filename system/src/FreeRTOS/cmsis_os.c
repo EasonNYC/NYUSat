@@ -356,7 +356,7 @@ osEvent osWait (uint32_t millisec);
 * @retval  timer ID for reference by other functions or NULL in case of error.
 * @note   MUST REMAIN UNCHANGED: \b osTimerCreate shall be consistent in every CMSIS-RTOS.
 */
-
+osTimerId osTimerCreate (const osTimerDef_t *timer_def, os_timer_type type, void *argument)
 {
 #if (configUSE_TIMERS == 1)
 
