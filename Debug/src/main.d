@@ -42,7 +42,9 @@ src/main.o: ../src/main.c ../include/main.h \
  ../system/include/FreeRTOS/task.h ../system/include/FreeRTOS/list.h \
  ../system/include/FreeRTOS/timers.h ../system/include/FreeRTOS/queue.h \
  ../system/include/FreeRTOS/semphr.h \
- ../system/include/FreeRTOS/event_groups.h ../include/GPS.h
+ ../system/include/FreeRTOS/event_groups.h ../include/adc.h \
+ ../include/can.h ../include/dma.h ../include/i2c.h ../include/spi.h \
+ ../include/tim.h ../include/usart.h ../include/gpio.h ../include/GPS.h
 
 ../include/main.h:
 
@@ -143,5 +145,21 @@ src/main.o: ../src/main.c ../include/main.h \
 ../system/include/FreeRTOS/semphr.h:
 
 ../system/include/FreeRTOS/event_groups.h:
+
+../include/adc.h:
+
+../include/can.h:
+
+../include/dma.h:
+
+../include/i2c.h:
+
+../include/spi.h:
+
+../include/tim.h:
+
+../include/usart.h:
+
+../include/gpio.h:
 
 ../include/GPS.h:

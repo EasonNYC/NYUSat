@@ -4,43 +4,55 @@
   * Description        : Main program body
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2017 STMicroelectronics
+  * Copyright (c) 2017 STMicroelectronics International N.V. 
+  * All rights reserved.
   *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
+  * Redistribution and use in source and binary forms, with or without 
+  * modification, are permitted, provided that the following conditions are met:
   *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  * 1. Redistribution of source code must retain the above copyright notice, 
+  *    this list of conditions and the following disclaimer.
+  * 2. Redistributions in binary form must reproduce the above copyright notice,
+  *    this list of conditions and the following disclaimer in the documentation
+  *    and/or other materials provided with the distribution.
+  * 3. Neither the name of STMicroelectronics nor the names of other 
+  *    contributors to this software may be used to endorse or promote products 
+  *    derived from this software without specific written permission.
+  * 4. This software, including modifications and/or derivative works of this 
+  *    software, must execute solely and exclusively on microcontroller or
+  *    microprocessor devices manufactured by or for STMicroelectronics.
+  * 5. Redistribution and use of this software other than as permitted under 
+  *    this license is void and will automatically terminate your rights under 
+  *    this license. 
+  *
+  * THIS SOFTWARE IS PROVIDED BY STMICROELECTRONICS AND CONTRIBUTORS "AS IS" 
+  * AND ANY EXPRESS, IMPLIED OR STATUTORY WARRANTIES, INCLUDING, BUT NOT 
+  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+  * PARTICULAR PURPOSE AND NON-INFRINGEMENT OF THIRD PARTY INTELLECTUAL PROPERTY
+  * RIGHTS ARE DISCLAIMED TO THE FULLEST EXTENT PERMITTED BY LAW. IN NO EVENT 
+  * SHALL STMICROELECTRONICS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+  * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+  * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, 
+  * OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
+  * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
+  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
   *
   ******************************************************************************
   */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_hal.h"
+#include "cmsis_os.h"
 
 /* USER CODE BEGIN Includes */
+//
 
+//FreeRTOS running/working, trying to add system view
 
+//#include "SEGGER_SYSVIEW.h"
 
-//uart rx DMA working on usart2
-//uart2 tx working with IT
-
+#include "GPS.h"
 
 
 /* USER CODE END Includes */
@@ -60,8 +72,14 @@ UART_HandleTypeDef huart2;
 UART_HandleTypeDef huart3;
 DMA_HandleTypeDef hdma_usart2_rx;
 
+osThreadId defaultTaskHandle;
+osThreadId blinkTaskHandle;
+
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+
+
+///working GPS / DMA
 
 /* USER CODE END PV */
 
@@ -78,26 +96,26 @@ static void MX_USART3_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_ADC3_Init(void);
-
+void mainTask(void const * argument);//prints and blinks
+void GPSProcessTask(void const * argument);//handles GPS processing
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
+volatile uint8_t rx2Buff; //incoming uart2 byte (DMA) PA2tx | PA3rx
+volatile uint8_t rx3Buff; //incoming uart3 byte
+
+volatile uint16_t dataArrived = 0;
+GPS_pub myGPSPUB;
 
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-char data; //handle incoming uart3 data
-uint8_t rxBuffer; //handle incoming uart2 data
-uint8_t USART2dataArrived = 0;
-uint8_t USART3dataArrived = 0;
-char* msg = "Hello World!\r\n";
-int num = 0;
-uint32_t lastime;
 
 /* USER CODE END 0 */
 
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -116,18 +134,62 @@ int main(void)
   MX_CAN1_Init();
   MX_I2C1_Init();
   MX_SPI1_Init();
-  MX_USART2_UART_Init(); //pa3grn->blutx, Pa2->bluRX  ***
-  MX_USART3_UART_Init(); //pb11grn->blutx, PD8->bluRX
+  MX_USART2_UART_Init();
+  MX_USART3_UART_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_ADC3_Init();
 
   /* USER CODE BEGIN 2 */
+  //SEGGER_SYSVIEW_Conf();   /* Configure and initialize SystemView*/
+  //SEGGER_SYSVIEW_Start();
 
-  HAL_UART_Receive_DMA(&huart2, &rxBuffer, 1);//only call once only
-  HAL_UART_Receive_IT(&huart3, &data, 1); //call once, then call again in main when data comes in
-  lastime = HAL_GetTick();
+  GPS_init();
+
+  HAL_UART_Receive_DMA(&huart2, &rx2Buff, 1);//only call once before main loop
+  //HAL_UART_Receive_IT(&huart3, &data, 1); //call once, then call again in main when data c
+
+
   /* USER CODE END 2 */
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+
+
+
+  /* USER CODE END RTOS_TIMERS */
+
+  /* Create the thread(s) */
+  /* definition and creation of defaultTask */
+  osThreadDef(mainTask, mainTask, osPriorityNormal, 0, 128);
+  defaultTaskHandle = osThreadCreate(osThread(mainTask), NULL);
+
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+
+  osThreadDef(GPSTask, GPSProcessTask, osPriorityNormal, 0, 128); //temporary
+  blinkTaskHandle = osThreadCreate(osThread(GPSTask), NULL);
+
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+ 
+
+  /* Start scheduler */
+  osKernelStart();
+  
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -137,61 +199,29 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 
-	//
-	//Handle incoming GPS UART
-	if(USART2dataArrived)
-	{
-		USART2dataArrived = 0;
-
-		printf("%x ", rxBuffer); //print to the screen what you got or put byte into buffer
-		if (rxBuffer == 0x0a) {
-			printf("\r\n");
-		}
-
-	}
-
-	//Handle incoming Geiger Counter Data
-	if(USART3dataArrived)
-	{
-		USART3dataArrived = 0;
-		HAL_UART_Receive_IT(&huart3, &data, 1);
-		printf("[%c]\n", data);
-	}
-
-
-	if((HAL_GetTick() - lastime) > 1000){
-		//transmit some message
-		HAL_UART_Transmit_IT(&huart2, (uint8_t*)msg, strlen(msg));
-
-		//semihosting
-		//printf("%d\n", num);
-		num++;
-
-		//blinky
-		HAL_GPIO_TogglePin(GPIOD,LD6_Pin);
-		lastime = HAL_GetTick();
-	}
-
   }
   /* USER CODE END 3 */
 
 }
 
-//dma1 stream 5
-
-
+//all incoming uart messages go thru this handler after data arrives
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 //printf("[data arrived]\n");
 
 	if(huart->Instance == USART2){
-		USART2dataArrived = 1;
-		//or handle the byte/put byte into some array
+		//dataArrived = 1;
+		//xQueueSendToBackFromISR(queue_GPS,&rx2Buff,NULL);
+		GPS_putByte(rx2Buff);
 	}
-
-	else if(huart->Instance == USART3) {
+	/*
+	else if(huart->Instance == USART3) { //for GEIGER COUNTER
 		USART3dataArrived = 1;
-	}
+		if(rx2Buff == 0x1)
+			GeigerCntr++;
+	}*/
 }
+
+
 
 
 /** System Clock Configuration
@@ -210,8 +240,7 @@ void SystemClock_Config(void)
 
     /**Initializes the CPU, AHB and APB busses clocks 
     */
-  //RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
@@ -247,7 +276,7 @@ void SystemClock_Config(void)
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
   /* SysTick_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(SysTick_IRQn, 15, 0);
 }
 
 /* ADC1 init function */
@@ -451,7 +480,7 @@ static void MX_USART3_UART_Init(void)
 {
 
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 9600;
+  huart3.Init.BaudRate = 115200;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -475,7 +504,7 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Stream5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
 
 }
@@ -636,6 +665,44 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
+
+/* StartDefaultTask function */
+void mainTask(void const * argument)
+{
+
+  /* USER CODE BEGIN 5 */
+
+
+  /* Infinite loop */
+  for(;;)
+  {
+
+   HAL_GPIO_TogglePin(GPIOD,LD6_Pin);
+   getGPS(&myGPSPUB);
+   osDelay(1500);
+   //printf("lat:%f, lon:%f\n", getLatitude(), getLongitude());
+   }
+  /* USER CODE END 5 */
+}
+
+void GPSProcessTask(void const * argument)
+{
+
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+
+   //check USART2queue for incoming GPS data and handle it
+	processGPS();
+
+   //HAL_GPIO_TogglePin(GPIOD,LD5_Pin);
+   //osDelay(2000);
+   }
+  /* USER CODE END 5 */ 
+}
+
+
 
 /**
   * @brief  Period elapsed callback in non blocking mode
