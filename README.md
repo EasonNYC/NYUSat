@@ -8,15 +8,16 @@ OBC/Payload lead SW dev: Eason Smith (Eason@EasonRobotics.com)
 An earlier version of this repositry that is no longer being developed can be found here:https://github.com/EasonNYC/NYUSat-old
 
 HW Requirements:
-STM32F407VGT6
+STM32F407VGT6 ARM Cortex-M4
 
-Currently Supported:
-Venus638FLPx (GPS)
-Under development:
-Si7021 (Humidty and Temerature)
-Geiger (Radiation)
-MPU9250 (Position, Acceleration, Velocity)
-BMP280 (Pressure, Temperature)
+Currently Supported:  
+Venus638FLPx (GPS)  
+Si7021 (Humidty and Temerature)  
+  
+Under development:  
+Geiger (Radiation)  
+MPU9250 (Position, Acceleration, Velocity)  
+BMP280 (Pressure, Temperature)  
 
 
 SW Requirements:
