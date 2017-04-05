@@ -5,6 +5,7 @@
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
 ../src/GPS.c \
+../src/SI7021.c \
 ../src/_initialize_hardware.c \
 ../src/_write.c \
 ../src/adc.c \
@@ -25,6 +26,7 @@ C_SRCS += \
 
 OBJS += \
 ./src/GPS.o \
+./src/SI7021.o \
 ./src/_initialize_hardware.o \
 ./src/_write.o \
 ./src/adc.o \
@@ -45,6 +47,7 @@ OBJS += \
 
 C_DEPS += \
 ./src/GPS.d \
+./src/SI7021.d \
 ./src/_initialize_hardware.d \
 ./src/_write.d \
 ./src/adc.d \

@@ -49,7 +49,8 @@
 /* USER CODE BEGIN Includes */     
 #include "gpio.h"
 #include "GPS.h"
-//#include "stm32f4xx_hal_i2c.h"
+#include "SI7021.h"
+
 #include "i2c.h"
 /* USER CODE END Includes */
 
@@ -58,16 +59,19 @@ osThreadId defaultTaskHandle;
 
 /* USER CODE BEGIN Variables */
 osThreadId GPSTaskHandle;
+osThreadId SI7021TaskHandle;
+
 GPS_pub myGPSPUB;
+SI7021_pub mySIPUB;
 
-uint16_t rx = 0;
-volatile uint8_t RHdata[2] = {0,0};
-volatile uint8_t TEMPdata[2] = {0,0};
+//uint16_t rx = 0;
+//volatile uint8_t RHdata[2] = {0,0};
+//volatile uint8_t TEMPdata[2] = {0,0};
 
-#define DEVICESI 0x40
-uint8_t addr = DEVICESI<<1;
-float tempc;
-float RHpct;
+//#define DEVICESI 0x40
+//uint8_t addr = DEVICESI<<1;
+//float tempc;
+//float RHpct;
 /* USER CODE END Variables */
 
 /* Function prototypes -------------------------------------------------------*/
@@ -77,6 +81,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
 /* USER CODE BEGIN FunctionPrototypes */
 void GPSProcessTask(void const * argument);//handles GPS processing
+void SI7021ProcessTask(void const * argument);
 /* USER CODE END FunctionPrototypes */
 
 /* Hook prototypes */
@@ -107,10 +112,11 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  osThreadDef(GPSTask, GPSProcessTask, osPriorityNormal, 0, 128); //temporary
+  osThreadDef(GPSTask, GPSProcessTask, osPriorityNormal, 0, 128); //
   //GPSTaskHandle = osThreadCreate(osThread(GPSTask), NULL);
 
-
+  osThreadDef(SI7021Task, SI7021ProcessTask, osPriorityNormal, 0, 128);
+  SI7021TaskHandle = osThreadCreate(osThread(SI7021Task), NULL);
 
   /* USER CODE END RTOS_THREADS */
 
@@ -119,40 +125,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_QUEUES */
 }
 
-/*
-uint8_t I2C_read8(uint8_t reg){
-	uint8_t data;
-	I2C_GenerateSTART(I2C1, ENABLE);
-}*/
-/*
-void I2C_get16(uint8_t address, uint8_t reg, uint8_t* pDataBuff){
 
-	//wait for device
-	while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
-
-	//request data at register reg
-	while(HAL_I2C_Master_Transmit_IT(&hi2c1, address, (uint8_t*)&reg, 1)!= HAL_OK){
-			if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)
-				  {
-					while(1){}
-					//Error_Handler();
-				  }
-		}
-
-	//wait for device ready
-	while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
-
-	while(HAL_I2C_Master_Receive_IT(&hi2c1, address, pDataBuff, 2)!= HAL_OK) {
-			  // Error_Handler() function is called when Timout error occurs.
-			  //	 When Acknowledge failure ocucurs (Slave don't acknowledge it's address)
-			 //	 Master restarts communication
-		  if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)	  {
-				  while(1){}
-				///Error_Handler();
-		}
-	}
-}
-*/
 /* StartDefaultTask function */
 void StartDefaultTask(void const * argument)
 {
@@ -164,8 +137,11 @@ void StartDefaultTask(void const * argument)
 	HAL_GPIO_TogglePin(GPIOD,LD6_Pin);
 
 	getGPS(&myGPSPUB);
+	getSI7021(&mySIPUB);
     osDelay(1500);
 
+
+    /*
     //0xF5 ask RH no hold
     //0xE0 read temp from prev RH
     uint8_t SIREG_RH = 0xE5;
@@ -184,7 +160,7 @@ void StartDefaultTask(void const * argument)
     //calc tempC
     uint16_t tempcode = (uint16_t)TEMPdata[0] << 8 | (uint16_t)TEMPdata[1];
     tempc = (175.72*(float)(tempcode)/65536.0) - 46.85;
-
+   */
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -207,7 +183,22 @@ void GPSProcessTask(void const * argument)
   /* USER CODE END 5 */
 }
 
+void SI7021ProcessTask(void const * argument)
+{
 
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+
+   //request humidity and temperature data from si7021 via i2c and handle it
+   processSI7021();
+
+   //HAL_GPIO_TogglePin(GPIOD,LD5_Pin);
+   osDelay(200);
+   }
+  /* USER CODE END 5 */
+}
 
 /* USER CODE END Application */
 
