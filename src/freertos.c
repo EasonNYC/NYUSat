@@ -49,7 +49,7 @@
 /* USER CODE BEGIN Includes */     
 #include "gpio.h"
 #include "GPS.h"
-#include "stm32f4xx_hal_i2c.h"
+//#include "stm32f4xx_hal_i2c.h"
 #include "i2c.h"
 /* USER CODE END Includes */
 
@@ -124,8 +124,35 @@ uint8_t I2C_read8(uint8_t reg){
 	uint8_t data;
 	I2C_GenerateSTART(I2C1, ENABLE);
 }*/
+/*
+void I2C_get16(uint8_t address, uint8_t reg, uint8_t* pDataBuff){
 
+	//wait for device
+	while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
 
+	//request data at register reg
+	while(HAL_I2C_Master_Transmit_IT(&hi2c1, address, (uint8_t*)&reg, 1)!= HAL_OK){
+			if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)
+				  {
+					while(1){}
+					//Error_Handler();
+				  }
+		}
+
+	//wait for device ready
+	while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
+
+	while(HAL_I2C_Master_Receive_IT(&hi2c1, address, pDataBuff, 2)!= HAL_OK) {
+			  // Error_Handler() function is called when Timout error occurs.
+			  //	 When Acknowledge failure ocucurs (Slave don't acknowledge it's address)
+			 //	 Master restarts communication
+		  if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)	  {
+				  while(1){}
+				///Error_Handler();
+		}
+	}
+}
+*/
 /* StartDefaultTask function */
 void StartDefaultTask(void const * argument)
 {
@@ -139,85 +166,24 @@ void StartDefaultTask(void const * argument)
 	getGPS(&myGPSPUB);
     osDelay(1500);
 
-
-    /*
-    if(HAL_I2C_IsDeviceReady(&hi2c1,addr,10,500 ) != HAL_OK) {
-    	while(1){}
-    }*/
     //0xF5 ask RH no hold
     //0xE0 read temp from prev RH
     uint8_t SIREG_RH = 0xE5;
     uint8_t SIREG_TEMP = 0xE0;
-    //HAL_I2C_Mem_Read(&hi2c1,addr,RHcode,1,data,2,HAL_MAX_DELAY);
-    //wait for device ready
-    while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
 
-    while(HAL_I2C_Master_Transmit_IT(&hi2c1, (uint8_t)addr, (uint8_t*)&SIREG_RH, 1)!= HAL_OK){
-    	if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)
-    	      {
-    			while(1){}
-    	        //Error_Handler();
-    	      }
-    }
+    //getRH
+    I2C_get16(addr,SIREG_RH, &RHdata);
 
-    //wait for device ready
-    while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
-
-
-    while(HAL_I2C_Master_Receive_IT(&hi2c1, (uint8_t)addr, RHdata, 2)!= HAL_OK) {
-          /* Error_Handler() function is called when Timout error occurs.
-             When Acknowledge failure ocucurs (Slave don't acknowledge it's address)
-             Master restarts communication */
-          if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)
-          {
-        	  while(1){}
-            ///Error_Handler();
-          }
-    }
-
-    //calc RH
+    //calculate Relative humidity (as a percentage)
     uint16_t RHcode = (uint16_t)RHdata[0] << 8 | (uint16_t)RHdata[1];
     RHpct = (125.0*(float)(RHcode)/65536.0) - 6.0;
 
-
-
-    //get TempC
-    while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
-
-	while(HAL_I2C_Master_Transmit_IT(&hi2c1, (uint8_t)addr, (uint8_t*)&SIREG_TEMP, 1)!= HAL_OK){
-		if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)
-			  {
-				while(1){}
-				//Error_Handler();
-			  }
-	}
-
-
-
-	//wait for device ready
-	while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
-
-
-	while(HAL_I2C_Master_Receive_IT(&hi2c1, (uint8_t)addr, TEMPdata, 2)!= HAL_OK) {
-		  /* Error_Handler() function is called when Timout error occurs.
-			 When Acknowledge failure ocucurs (Slave don't acknowledge it's address)
-			 Master restarts communication */
-		  if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)
-		  {
-			  while(1){}
-			///Error_Handler();
-		  }
-	}
+    //get TempC from previous RH measurement
+    I2C_get16(addr,SIREG_TEMP, &TEMPdata);
 
     //calc tempC
     uint16_t tempcode = (uint16_t)TEMPdata[0] << 8 | (uint16_t)TEMPdata[1];
     tempc = (175.72*(float)(tempcode)/65536.0) - 46.85;
-
-
-    //HAL_I2C_Master_Sequential_Transmit_IT(&hi2c1,addr,&RHcode,1,I2C_FIRST_FRAME);
-    //HAL_I2C_Master_Receive(&hi2c1,addr,data,2,HAL_MAX_DELAY);
-    //HAL_I2C_Master_Sequential_Transmit_IT(&hi2c1,addr,&SIREG_RH,1,I2C_FIRST_FRAME);
-    //HAL_I2C_Master_Sequential_Receive_IT(&hi2c1,addr,data,2,I2C_LAST_FRAME);
 
   }
   /* USER CODE END StartDefaultTask */
