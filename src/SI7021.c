@@ -24,21 +24,23 @@ static volatile SI7021_pub tmpSI7021data;
 static SemaphoreHandle_t mutex_SI7021DATA = NULL;
 
 void SI7021_init(void){
-	//init read/write mutex
+
 	mutex_SI7021DATA = xSemaphoreCreateMutex();
+
+	//requires 25ms delay before taking first conversion
 
 }
 
-void processSI7021(void){
+void processSI7021(void){ //conv req time = 12ms Rh_MAX + 10.8ms tempC_MAX = 22.8ms per RHcall.
 
 		//getRH
-	    I2C_get16(addr,SIREG_RH, &RHdata);
+	    I2C_get16(addr,SIREG_RH, &RHdata); //blocks i2c (NACKS) for 22.8ms
 
 	    //calculate Relative humidity (as a percentage)
 	    uint16_t RHcode = (uint16_t)RHdata[0] << 8 | (uint16_t)RHdata[1];
 
-	    //get TempC from previous RH measurement
-	    I2C_get16(addr,SIREG_TEMP, &TEMPdata);
+	    //get TempC from previous RH measurement (i2c Should return immediately)
+	    I2C_get16(addr,SIREG_TEMP, (uint8_t*)&TEMPdata);
 
 	    //calc tempC
 	    uint16_t tempcode = (uint16_t)TEMPdata[0] << 8 | (uint16_t)TEMPdata[1];

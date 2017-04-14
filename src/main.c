@@ -55,6 +55,7 @@
 
 /* USER CODE BEGIN Includes */
 #include "GPS.h"
+#include "GEIGER.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -66,6 +67,15 @@ volatile uint8_t rx3Buff; //incoming uart3 byte
 volatile uint8_t i2c1rxBuff;
 volatile uint32_t i2cdatasent = 0;
 volatile uint32_t i2cdatarec = 0;
+
+volatile uint32_t geigdatarec = 0;
+volatile uint32_t notgeigdatarec = 0;
+volatile uint32_t intrec = 0;
+
+volatile uint32_t ticks = 0; //seconds
+volatile uint32_t tmp;
+volatile uint32_t msTicks = 0; //milliseconds
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -108,15 +118,19 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_ADC3_Init();
-  MX_TIM6_Init();
+  MX_TIM7_Init();
 
   /* USER CODE BEGIN 2 */
-  //init GPS, DMA etc.
-  HAL_UART_Receive_DMA(&huart2, &rx2Buff, 1);//only call once before starting main freeRTOS threads
-  //HAL_I2C_Master_Receive_DMA(&hi2c1, 0x40, &i2c1rxBuff, 1);//only call once before starting main freeRTOS threads
 
+  HAL_UART_Receive_DMA(&huart2, &rx2Buff, 1);//only call once before starting main freeRTOS threads
+  //HAL_TIM_Base_Start_IT(&htim6);
+  //HAL_
+  //HAL_I2C_Master_Receive_DMA(&hi2c1, 0x40, &i2c1rxBuff, 1);
+
+  //init periphs
   GPS_init();
-  SI7021_init();
+  //GEIG_init(), SI7021_init() called in freertos.c
+
 
   /* USER CODE END 2 */
 
@@ -207,31 +221,34 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		//xQueueSendToBackFromISR(queue_GPS,&rx2Buff,NULL);
 		GPS_putByte(rx2Buff);
 	}
-	/*
-	else if(huart->Instance == USART3) { //for GEIGER COUNTER
-		USART3dataArrived = 1;
-		if(rx2Buff == 0x1)
-			GeigerCntr++;
-	}*/
+
+	else if(huart->Instance == USART3) { //for GEIGER COUNTER (alternate transmission port)
+
+		if(rx2Buff == 0x0 || rx2Buff == 0x1)
+			GEIG_incClick(); //no mutex because a few extra clicks in cps readings are acceptable
+	}
 }
 
 
-
+//I2C transfer complete handler
 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c){
 
 	if(hi2c->Instance == I2C1){
 			i2cdatasent++;
+			//task notify here?
 			//xQueueSendToBackFromISR(queue_GPS,&rx2Buff,NULL);
 
 	}
 }
 
+//I2C rx received handler
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 //printf("[data arrived]\n");
 
 	if(hi2c->Instance == I2C1){
-		//dataArrived = 1;
+
 		//xQueueSendToBackFromISR(queue_GPS,&rx2Buff,NULL);
+		//task notify here?
 		i2cdatarec++;
 		//printf("rx:%x",hi2c->pBuffPtr);
 
@@ -239,6 +256,20 @@ void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 
 }
 
+//handle external event interrupts on PD10 and PD11 from GPS 1PPS and Geiger Counter
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+
+  if(GPIO_Pin == EXT11_GEIG_Pin){  //GEIGER COUNTER
+	  geigdatarec++;
+	  GEIG_incClick();
+  }
+  else if (GPIO_Pin == EXT10_GPS_1PPS_Pin){  //GPS RECEIVER
+	  //notgeigdatarec++;
+	  GPS_ppsHandler(msTicks);
+  }
+
+}
 
 
 /* USER CODE END 4 */
@@ -255,11 +286,21 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
 /* USER CODE BEGIN Callback 0 */
 
+
+
 /* USER CODE END Callback 0 */
   if (htim->Instance == TIM3) {
-    HAL_IncTick();
+   msTicks++;
+   HAL_IncTick();
+
   }
 /* USER CODE BEGIN Callback 1 */
+  if (htim->Instance == TIM7) { //1Hz Geiger timer
+	  ticks++;
+	  //process CPS,CPM, reset click count
+	  GEIG_tmrHandler();
+
+  }
 
 /* USER CODE END Callback 1 */
 }

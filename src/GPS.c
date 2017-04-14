@@ -29,9 +29,13 @@
 static volatile CircArr_InitTypeDef circarr; //first create 1 circular array buffer called msg
 
 static uint8_t FLAG_OKTOCOPYNAVDATA = 0;
+static uint32_t tmp_timestamp = 0;
+static uint32_t tmp_PPStimestamp = 0;
 
 static SemaphoreHandle_t mutex_CIRCARR_RW;
 static SemaphoreHandle_t mutex_NAVDATA = NULL;
+
+extern volatile uint32_t msTicks;
 
 typedef union revint {
 	int32_t myInt;
@@ -60,6 +64,8 @@ typedef struct NAVstruct { //payload of 59 bytes
    int32_t ecef_velocity_x; //speed
    int32_t ecef_velocity_y;
    int32_t ecef_velocity_z;
+   uint32_t mcu_timestamp;
+   uint32_t pps_timestamp;
 } NAVstruct;
 
 /*todo: make byte aligned and try casting to struct without id
@@ -83,7 +89,7 @@ static GPSmsg gpsmsg;
 
 
 //GPS State Machine
-typedef enum {GETSTART, GETLENGTH, GETPAYLOAD, GETCHECKSUM, GETTRAILER, VALIDATE} GPS_STATE;
+typedef enum {GETSTART, GETSTART2, GETLENGTH, GETPAYLOAD, GETCHECKSUM, GETTRAILER, VALIDATE} GPS_STATE;
 static GPS_STATE state = GETSTART;
 
 //todo: wait on fix. wait on pps up. init time conversion between micro and sat
@@ -91,13 +97,7 @@ void GPS_init(void) {
 	mutex_NAVDATA = xSemaphoreCreateMutex();
 	mutex_CIRCARR_RW = xSemaphoreCreateMutex();
 
-	initCircArray(&circarr,MAXPAYLOADLEN);//rx storage
-
-	// volatile state=INITIALIZING, WARMUP,WAITINGFORFIX,HASFIX
-	// state=WARMINGUP
-	// todo: insert wait for 1min30secs cold start. while(usart <1) {timeout if more than 2 mins? throw error}
-	// state=WAITINGFORFIX
-	// done. call process GPS or have process GPS call GPS_init the first time through and set a flag
+	initCircArray(&circarr,MAXPAYLOADLEN);//store incoming bytes
 }
 
 //called in StateMachine to process payload ID's of accepted payloads.
@@ -128,7 +128,8 @@ switch(IDBYTE){
 		tmpNAVdata.ecef_velocity_x = (uint32_t)plmsg[47] << 24 | (uint32_t)plmsg[48] << 16 | (uint32_t)plmsg[49] << 8 | plmsg[50];
 		tmpNAVdata.ecef_velocity_y = (uint32_t)plmsg[51] << 24 | (uint32_t)plmsg[52] << 16 | (uint32_t)plmsg[53] << 8 | plmsg[54];
 		tmpNAVdata.ecef_velocity_z = (uint32_t)plmsg[55] << 24 | (uint32_t)plmsg[56] << 16 | (uint32_t)plmsg[57] << 8 | plmsg[58];
-
+		tmpNAVdata.mcu_timestamp = tmp_timestamp;
+		tmpNAVdata.pps_timestamp = tmp_PPStimestamp;
 		FLAG_OKTOCOPYNAVDATA = 1;
 		break;
 	default:
@@ -160,29 +161,41 @@ uint8_t GPS_getByte(void){
 }
 
 
-//Main GPS State Machine to process incoming USART1 bytes into valid GPS payload messages
+//Main GPS State Machine processes incoming USART1 bytes into valid GPS Nav messages
 void processGPS(void){
 	switch(state){
 	case GETSTART:
-		//wait for 2 bytes over usart
+		//wait for 2 bytes over usart //split this up
 		if(GPS_available() > 1){
-				uint8_t received1 = GPS_getByte();
-				uint8_t received2 = GPS_getByte();
 
-				if(received1 == START1 && received2 == START2){
+			    //save timestamp
+				tmp_timestamp = msTicks;
+				uint8_t received1 = GPS_getByte();
+
+				if(received1 == START1){
 					state = GETLENGTH;
 				}
-				else if (received1 != START1)
+				else
 				{
 					GPSstatus.s1_error++;
 					break;
 				}
-				else if (received2 != START2)
-				{
-					GPSstatus.s2_error++;
-					break;
-				}
+
     	}
+		break;
+	case GETSTART2:
+
+		if(GPS_available() > 1){
+			uint8_t received2 = GPS_getByte();
+			if(received2 == START2){
+				state = GETLENGTH;
+			}
+			else {
+				GPSstatus.s2_error++;
+				state = GETSTART;
+				break;
+			}
+		}
 		break;
 	case GETLENGTH:
 		//wait for 2 bytes
@@ -318,6 +331,26 @@ uint32_t getTOW(void){
 	uint32_t tow = 0;
 	tow = NAVdata.gnss_time_of_week;
 	return tow;
+}
+
+//Calculates msTicks clock error. Called in 1PPS external interrupt handler in main.c
+void GPS_ppsHandler(uint32_t cur_msTicks){
+	static uint8_t PPSINIT = 0;
+	static uint32_t nextPPS = 0;
+
+	tmp_PPStimestamp = cur_msTicks;
+
+	if(PPSINIT) {
+		int32_t error = cur_msTicks - nextPPS;
+
+		//ignore larger errors due to Loss of Signal and nextPulse sync on startup
+		if((error < 700) || (error > -700)) {
+			GPSstatus.msTicks_error += error;
+		}
+	}
+
+	nextPPS = cur_msTicks + 1000; //save new next
+	PPSINIT = 1;
 }
 
 //returns a copy of the most recent valid NAV data for other modules to use

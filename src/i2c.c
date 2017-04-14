@@ -169,19 +169,23 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* i2cHandle)
 
 /* USER CODE BEGIN 1 */
 
+//basic "random read" function for I2C peripherals to use.  returns 2 bytes from a periph register
 void I2C_get16(uint8_t address, uint8_t reg, uint8_t* pDataBuff){
 
 	//enter I2C1 critical section
+	/*todo: may wish to do: static TaskHandle_t xTaskToNotify = NULL;
+	 *
+	 */
 	if ( xSemaphoreTake( mutex_I2C1comm, portMAX_DELAY) == pdTRUE){
 
 	while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
 
 	//request data at register reg
 	while(HAL_I2C_Master_Transmit_IT(&hi2c1, address, (uint8_t*)&reg, 1)!= HAL_OK){
-			if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)
-				  {
-					while(1){} //Error_Handler();
-				  }
+			//if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)
+				//  {
+					//while(1){} //Error_Handler();
+				  //}
 		}
 
 	while (HAL_I2C_GetState(&hi2c1) != HAL_I2C_STATE_READY) { }
@@ -190,9 +194,9 @@ void I2C_get16(uint8_t address, uint8_t reg, uint8_t* pDataBuff){
 			  //Error_Handler() function is called when Timout error occurs.
 			  //	 When Acknowledge failure occurs (Slave don't acknowledge it's address)
 			  //	 Master restarts communication
-		  if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)	  {
-				  while(1){} //Error_Handler();
-		}
+		  //if (HAL_I2C_GetError(&hi2c1) != HAL_I2C_ERROR_AF)	  {
+			//	  while(1){} //Error_Handler();
+			//}
 	}
 	xSemaphoreGive(mutex_I2C1comm);
    }//end i2c critical section

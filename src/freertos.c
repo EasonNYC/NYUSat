@@ -50,7 +50,7 @@
 #include "gpio.h"
 #include "GPS.h"
 #include "SI7021.h"
-
+#include "GEIGER.h"
 #include "i2c.h"
 /* USER CODE END Includes */
 
@@ -60,9 +60,11 @@ osThreadId defaultTaskHandle;
 /* USER CODE BEGIN Variables */
 osThreadId GPSTaskHandle;
 osThreadId SI7021TaskHandle;
+osThreadId GEIGERTaskHandle;
 
 GPS_pub myGPSPUB;
 SI7021_pub mySIPUB;
+GEIG_pub myGEIGERPUB;
 
 //uint16_t rx = 0;
 //volatile uint8_t RHdata[2] = {0,0};
@@ -82,6 +84,7 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 /* USER CODE BEGIN FunctionPrototypes */
 void GPSProcessTask(void const * argument);//handles GPS processing
 void SI7021ProcessTask(void const * argument);
+void GEIGERProcessTask(void const * argument);
 /* USER CODE END FunctionPrototypes */
 
 /* Hook prototypes */
@@ -112,11 +115,32 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+
+  //put these in defines to turn on and off
+
+  //GPS Sensor
   osThreadDef(GPSTask, GPSProcessTask, osPriorityNormal, 0, 128); //
   //GPSTaskHandle = osThreadCreate(osThread(GPSTask), NULL);
 
+  //SI7021 Rel Humidity and Temperature Sensor
   osThreadDef(SI7021Task, SI7021ProcessTask, osPriorityNormal, 0, 128);
   SI7021TaskHandle = osThreadCreate(osThread(SI7021Task), NULL);
+  SI7021_init();
+
+  //GEIGER counter
+  osThreadDef(GEIGERTask, GEIGERProcessTask, osPriorityNormal, 0, 128);
+  GEIGERTaskHandle = osThreadCreate(osThread(GEIGERTask), NULL);
+  GEIG_init();
+
+  //INA219 Current Sensor (i2c1)
+
+  //TPS22994 4-channel Load Switch (i2c1)
+
+  //BMP280 Pressure Sensor (i2c1 or SPI)
+
+  //MPU9250 MPU (I2C)
+
+  //ADC123
 
   /* USER CODE END RTOS_THREADS */
 
@@ -138,7 +162,8 @@ void StartDefaultTask(void const * argument)
 
 	getGPS(&myGPSPUB);
 	getSI7021(&mySIPUB);
-    osDelay(1500);
+	getGEIGER(&myGEIGERPUB);
+    osDelay(1200);
 
 
     /*
@@ -191,14 +216,31 @@ void SI7021ProcessTask(void const * argument)
   for(;;)
   {
 
-   //request humidity and temperature data from si7021 via i2c and handle it
-   processSI7021();
+   processSI7021(); //request humidity and temperature data from si7021 via i2c and handle it
 
    //HAL_GPIO_TogglePin(GPIOD,LD5_Pin);
    osDelay(200);
    }
   /* USER CODE END 5 */
 }
+
+void GEIGERProcessTask(void const * argument)
+{
+
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+
+   GEIG_processGEIGER(); //request humidity and temperature data from si7021 via i2c and handle it
+
+   //HAL_GPIO_TogglePin(GPIOD,LD5_Pin);
+   //osDelay(200);
+   }
+  /* USER CODE END 5 */
+}
+
+
 
 /* USER CODE END Application */
 

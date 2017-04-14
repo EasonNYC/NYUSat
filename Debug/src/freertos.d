@@ -44,7 +44,7 @@ src/freertos.o: ../src/freertos.c ../system/include/FreeRTOS/FreeRTOS.h \
  ../system/include/stm32f4xx/stm32f4xx_hal_tim.h \
  ../system/include/stm32f4xx/stm32f4xx_hal_tim_ex.h \
  ../system/include/stm32f4xx/stm32f4xx_hal_uart.h ../include/GPS.h \
- ../include/SI7021.h ../include/i2c.h
+ ../include/SI7021.h ../include/GEIGER.h ../include/i2c.h
 
 ../system/include/FreeRTOS/FreeRTOS.h:
 
@@ -153,5 +153,7 @@ src/freertos.o: ../src/freertos.c ../system/include/FreeRTOS/FreeRTOS.h \
 ../include/GPS.h:
 
 ../include/SI7021.h:
+
+../include/GEIGER.h:
 
 ../include/i2c.h:
