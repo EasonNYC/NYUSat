@@ -103,7 +103,10 @@ void GEIG_tmrHandler(){
 
 	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-	configASSERT( GEIG_xTaskHandle != NULL );
+	if(GEIG_xTaskHandle == NULL) {
+		return; //geiger not initialized.
+	}
+	//configASSERT( GEIG_xTaskHandle != NULL );
 	vTaskNotifyGiveFromISR( GEIG_xTaskHandle, &xHigherPriorityTaskWoken );//unblock geiger process thread
 
 	//force a likely context switch to GEIGER process thread

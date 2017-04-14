@@ -45,78 +45,73 @@
 /* Includes ------------------------------------------------------------------*/
 #include "tim.h"
 
-#include "dma.h"
-
 /* USER CODE BEGIN 0 */
-
-// TIM6 basic timer init code below
 
 /* USER CODE END 0 */
 
-TIM_HandleTypeDef htim7;
+TIM_HandleTypeDef htim9;
 
-
-/* TIM6 init function */
-void MX_TIM7_Init(void)
+/* TIM9 init function */
+void MX_TIM9_Init(void)
 {
-  TIM_MasterConfigTypeDef sMasterConfig;
+  TIM_ClockConfigTypeDef sClockSourceConfig;
 
-  htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 49999;
-  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 1999;
+  htim9.Instance = TIM9;
+  htim9.Init.Prescaler = 49999;
+  htim9.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim9.Init.Period = 1999;
+  htim9.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  if (HAL_TIM_Base_Init(&htim9) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
-    {
-      Error_Handler();
-    }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim9, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
-    sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-    sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-    if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
-    {
-      Error_Handler();
-    }
 }
 
 void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* tim_baseHandle)
 {
 
-	if(tim_baseHandle->Instance==TIM7)
-	  {
-	  /* USER CODE BEGIN TIM7_MspInit 0 */
+  if(tim_baseHandle->Instance==TIM9)
+  {
+  /* USER CODE BEGIN TIM9_MspInit 0 */
 
-	  /* USER CODE END TIM7_MspInit 0 */
-	    /* Peripheral clock enable */
-	    __HAL_RCC_TIM7_CLK_ENABLE();
+  /* USER CODE END TIM9_MspInit 0 */
+    /* Peripheral clock enable */
+    __HAL_RCC_TIM9_CLK_ENABLE();
 
-	    /* Peripheral interrupt init */
-	    HAL_NVIC_SetPriority(TIM7_IRQn, 0, 0);
-	    HAL_NVIC_EnableIRQ(TIM7_IRQn);
-	  /* USER CODE BEGIN TIM7_MspInit 1 */
+    /* Peripheral interrupt init */
+    HAL_NVIC_SetPriority(TIM1_BRK_TIM9_IRQn, 6, 0); //must be above 5 for FREERTOS fromISR function in ISR to not break everything.
+    HAL_NVIC_EnableIRQ(TIM1_BRK_TIM9_IRQn);
+  /* USER CODE BEGIN TIM9_MspInit 1 */
 
-	  /* USER CODE END TIM7_MspInit 1 */
-	  }
+  /* USER CODE END TIM9_MspInit 1 */
+  }
 }
 
 void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 {
 
-  if(tim_baseHandle->Instance==TIM7)
+  if(tim_baseHandle->Instance==TIM9)
   {
-  /* USER CODE BEGIN TIM7_MspDeInit 0 */
+  /* USER CODE BEGIN TIM9_MspDeInit 0 */
 
-  /* USER CODE END TIM7_MspDeInit 0 */
+  /* USER CODE END TIM9_MspDeInit 0 */
     /* Peripheral clock disable */
-    __HAL_RCC_TIM7_CLK_DISABLE();
+    __HAL_RCC_TIM9_CLK_DISABLE();
 
     /* Peripheral interrupt Deinit*/
-    HAL_NVIC_DisableIRQ(TIM7_IRQn);
+    HAL_NVIC_DisableIRQ(TIM1_BRK_TIM9_IRQn);
 
   }
-  /* USER CODE BEGIN TIM7_MspDeInit 1 */
+  /* USER CODE BEGIN TIM9_MspDeInit 1 */
 
-  /* USER CODE END TIM7_MspDeInit 1 */
+  /* USER CODE END TIM9_MspDeInit 1 */
 } 
 
 /* USER CODE BEGIN 1 */

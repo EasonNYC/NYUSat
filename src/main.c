@@ -118,12 +118,12 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_ADC3_Init();
-  MX_TIM7_Init();
+  MX_TIM9_Init();
 
   /* USER CODE BEGIN 2 */
 
   HAL_UART_Receive_DMA(&huart2, &rx2Buff, 1);//only call once before starting main freeRTOS threads
-  //HAL_TIM_Base_Start_IT(&htim6);
+  HAL_TIM_Base_Start_IT(&htim9);
   //HAL_
   //HAL_I2C_Master_Receive_DMA(&hi2c1, 0x40, &i2c1rxBuff, 1);
 
@@ -295,7 +295,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   }
 /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM7) { //1Hz Geiger timer
+  if (htim->Instance == TIM9) { //1Hz Geiger timer
 	  ticks++;
 	  //process CPS,CPM, reset click count
 	  GEIG_tmrHandler();
