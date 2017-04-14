@@ -23,6 +23,7 @@ GPS_pub GPSpub;
 
 //public struct to monitor blips and bloops for debug
 typedef struct GPS_status {
+	uint32_t chars_recvd;
    uint32_t s1_error; //start byte 1 not expected byte. some errors here ok (reason: cycling thru unhandled message ID's and msgs)
    uint32_t s2_error; //start byte 2.fewer errors here ok. Same reason, sometimes first start byte coincidentally in other msg payloads)
    uint32_t payload_length_error;

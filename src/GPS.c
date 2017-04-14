@@ -166,17 +166,18 @@ void processGPS(void){
 	switch(state){
 	case GETSTART:
 		//wait for 2 bytes over usart //split this up
-		if(GPS_available() > 1){
+		if(GPS_available()){
 
 			    //save timestamp
 				tmp_timestamp = msTicks;
 				uint8_t received1 = GPS_getByte();
 
 				if(received1 == START1){
-					state = GETLENGTH;
+					state = GETSTART2;
 				}
 				else
 				{
+					//(keep state the same)
 					GPSstatus.s1_error++;
 					break;
 				}
@@ -185,7 +186,7 @@ void processGPS(void){
 		break;
 	case GETSTART2:
 
-		if(GPS_available() > 1){
+		if(GPS_available()){
 			uint8_t received2 = GPS_getByte();
 			if(received2 == START2){
 				state = GETLENGTH;

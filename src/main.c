@@ -131,7 +131,6 @@ int main(void)
   GPS_init();
   //GEIG_init(), SI7021_init() called in freertos.c
 
-
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */
@@ -219,6 +218,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if(huart->Instance == USART2){
 		//dataArrived = 1;
 		//xQueueSendToBackFromISR(queue_GPS,&rx2Buff,NULL);
+		GPSstatus.chars_recvd++;
 		GPS_putByte(rx2Buff);
 	}
 

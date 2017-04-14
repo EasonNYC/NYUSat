@@ -27,7 +27,7 @@ void SI7021_init(void){
 
 	mutex_SI7021DATA = xSemaphoreCreateMutex();
 
-	//requires 25ms delay before taking first conversion
+	//todo:ensure 25ms delay before taking first conversion
 
 }
 
