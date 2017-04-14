@@ -122,14 +122,12 @@ int main(void)
 
   /* USER CODE BEGIN 2 */
 
-  HAL_UART_Receive_DMA(&huart2, &rx2Buff, 1);//only call once before starting main freeRTOS threads
-  HAL_TIM_Base_Start_IT(&htim9);
-  //HAL_
+  HAL_UART_Receive_DMA(&huart2, &rx2Buff, 1);//for DMA only call once before starting threads
+  HAL_TIM_Base_Start_IT(&htim9); //1sec timer for geiger CPS/CPM calcs
   //HAL_I2C_Master_Receive_DMA(&hi2c1, 0x40, &i2c1rxBuff, 1);
 
-  //init periphs
-  GPS_init();
-  //GEIG_init(), SI7021_init() called in freertos.c
+  //inits
+
 
   /* USER CODE END 2 */
 
@@ -213,19 +211,16 @@ void SystemClock_Config(void)
 
 //all incoming uart messages go thru this handler after data arrives
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-//printf("[data arrived]\n");
 
 	if(huart->Instance == USART2){
-		//dataArrived = 1;
-		//xQueueSendToBackFromISR(queue_GPS,&rx2Buff,NULL);
-		GPSstatus.chars_recvd++;
-		GPS_putByte(rx2Buff);
+
+		GPS_uart2Handler();
 	}
 
-	else if(huart->Instance == USART3) { //for GEIGER COUNTER (alternate transmission port)
+	else if(huart->Instance == USART3) { //for GEIGER COUNTER (alternate transmission port option)
 
 		if(rx2Buff == 0x0 || rx2Buff == 0x1)
-			GEIG_incClick(); //no mutex because a few extra clicks in cps readings are acceptable
+			GEIG_incClick();
 	}
 }
 
@@ -265,10 +260,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	  GEIG_incClick();
   }
   else if (GPIO_Pin == EXT10_GPS_1PPS_Pin){  //GPS RECEIVER
-	  //notgeigdatarec++;
 	  GPS_ppsHandler(msTicks);
   }
-
 }
 
 
@@ -295,10 +288,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   }
 /* USER CODE BEGIN Callback 1 */
-  if (htim->Instance == TIM9) { //1Hz Geiger timer
+  if (htim->Instance == TIM9) {   //1Hz Geiger timer
 	  ticks++;
-	  //process CPS,CPM, reset click count
-	  GEIG_tmrHandler();
+
+	  GEIG_tmrHandler();//process CPS,CPM, reset click count
 
   }
 

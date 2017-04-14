@@ -58,4 +58,5 @@ float getAltitudeSealvl(void);
 uint8_t getFix(void);
 void GPS_ppsHandler(uint32_t cur_msTicks);
 uint8_t getGPS(GPS_pub* myGPS); //for public mass consumption
+void GPS_uart2Handler(void);
 #endif /* GPS_GPS_H_ */

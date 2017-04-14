@@ -121,11 +121,12 @@ void MX_FREERTOS_Init(void) {
   //GPS Sensor
   osThreadDef(GPSTask, GPSProcessTask, osPriorityNormal, 0, 128); //
   GPSTaskHandle = osThreadCreate(osThread(GPSTask), NULL);
+  GPS_init();
 
   //SI7021 Rel Humidity and Temperature Sensor
   osThreadDef(SI7021Task, SI7021ProcessTask, osPriorityNormal, 0, 128);
-  //SI7021TaskHandle = osThreadCreate(osThread(SI7021Task), NULL);
-  //SI7021_init();
+  SI7021TaskHandle = osThreadCreate(osThread(SI7021Task), NULL);
+  SI7021_init();
 
   //GEIGER counter
   osThreadDef(GEIGERTask, GEIGERProcessTask, osPriorityNormal, 0, 128);
@@ -161,7 +162,7 @@ void StartDefaultTask(void const * argument)
 	HAL_GPIO_TogglePin(GPIOD,LD6_Pin);
 
 	getGPS(&myGPSPUB);
-	//getSI7021(&mySIPUB);
+	getSI7021(&mySIPUB);
 	getGEIGER(&myGEIGERPUB);
     osDelay(1200);
 

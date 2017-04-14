@@ -28,12 +28,17 @@
 //circular array
 static volatile CircArr_InitTypeDef circarr; //first create 1 circular array buffer called msg
 
+extern volatile uint8_t rx2Buff; //uart2 incoming byte buffer
+
 static uint8_t FLAG_OKTOCOPYNAVDATA = 0;
 static uint32_t tmp_timestamp = 0;
 static uint32_t tmp_PPStimestamp = 0;
 
 static SemaphoreHandle_t mutex_CIRCARR_RW;
 static SemaphoreHandle_t mutex_NAVDATA = NULL;
+
+static volatile TaskHandle_t GPS_xTaskHandle = NULL;
+
 
 extern volatile uint32_t msTicks;
 
@@ -67,15 +72,6 @@ typedef struct NAVstruct { //payload of 59 bytes
    uint32_t mcu_timestamp;
    uint32_t pps_timestamp;
 } NAVstruct;
-
-/*todo: make byte aligned and try casting to struct without id
-typedef union GPS {
-	uint8_t raw[NAVLEN];
-	NAVstruct current;
-} GPS;
-static GPS NAVdata, tmpNAVdata;  //can access NAVdata.current.latitude etc.
-*/
-
 NAVstruct NAVdata, tmpNAVdata;//use for now
 
 
@@ -89,13 +85,16 @@ static GPSmsg gpsmsg;
 
 
 //GPS State Machine
-typedef enum {GETSTART, GETSTART2, GETLENGTH, GETPAYLOAD, GETCHECKSUM, GETTRAILER, VALIDATE} GPS_STATE;
+typedef enum {GETSTART, GETSTART2, GETLENGTH, GETPAYLOAD, GETCHECKSUM, GETTRAILER} GPS_STATE;
 static GPS_STATE state = GETSTART;
 
 //todo: wait on fix. wait on pps up. init time conversion between micro and sat
 void GPS_init(void) {
+
 	mutex_NAVDATA = xSemaphoreCreateMutex();
-	mutex_CIRCARR_RW = xSemaphoreCreateMutex();
+	mutex_CIRCARR_RW = xSemaphoreCreateBinary();
+
+	GPS_xTaskHandle = xTaskGetHandle("GPSTask");
 
 	initCircArray(&circarr,MAXPAYLOADLEN);//store incoming bytes
 }
@@ -140,13 +139,11 @@ switch(IDBYTE){
 
 uint8_t GPS_available(void) {
 	uint8_t b = 0;
-	taskENTER_CRITICAL();
 	b = buf_available(&circarr);
-	taskEXIT_CRITICAL();
 	return b;
 }
 
-//current callback function which puts an incoming uart byte into the GPS buffer.
+//Puts an incoming uart byte into the GPS buffer. Called in GPS_uart2Callback
 void GPS_putByte(uint8_t rxbyte){
 	buf_putbyte(&circarr,rxbyte);
 }
@@ -154,21 +151,34 @@ void GPS_putByte(uint8_t rxbyte){
 //returns the next byte from the GPS buffer
 uint8_t GPS_getByte(void){
 	uint8_t b = 0;
-	taskENTER_CRITICAL();
-		buf_getbyte(&circarr,&b);
-	taskEXIT_CRITICAL();
+	buf_getbyte(&circarr,&b);
 	return b;
 }
 
 
-//Main GPS State Machine processes incoming USART1 bytes into valid GPS Nav messages
+//Main GPS State Machine
 void processGPS(void){
+
+	//ok to timeout till next time
+	if(FLAG_OKTOCOPYNAVDATA){
+		if ( xSemaphoreTake( mutex_NAVDATA, (BaseType_t)10)== pdTRUE){
+      		NAVdata = tmpNAVdata;
+			FLAG_OKTOCOPYNAVDATA = 0;
+			xSemaphoreGive(mutex_NAVDATA);
+		}
+	}
+
+
+	//**BLOCK!**
+	const TickType_t xMaxBlockTime = portMAX_DELAY;
+	uint32_t notifier = ulTaskNotifyTake( pdTRUE, xMaxBlockTime );
+	//**UNBLOCK**
+
 	switch(state){
 	case GETSTART:
-		//wait for 2 bytes over usart //split this up
-		if(GPS_available()){
 
-			    //save timestamp
+		if(GPS_available()){
+		  //wait for 1 byte
 				tmp_timestamp = msTicks;
 				uint8_t received1 = GPS_getByte();
 
@@ -177,7 +187,6 @@ void processGPS(void){
 				}
 				else
 				{
-					//(keep state the same)
 					GPSstatus.s1_error++;
 					break;
 				}
@@ -185,7 +194,7 @@ void processGPS(void){
     	}
 		break;
 	case GETSTART2:
-
+		//wait for 1 byte
 		if(GPS_available()){
 			uint8_t received2 = GPS_getByte();
 			if(received2 == START2){
@@ -207,12 +216,11 @@ void processGPS(void){
 				uint16_t len = highbyte | lowbyte;
 				gpsmsg.payload_length = len;
 
-				if(gpsmsg.payload_length > MAXPAYLOADLEN) { //catch early
+				if(gpsmsg.payload_length > MAXPAYLOADLEN) {
 						GPSstatus.payload_length_error++;
 						state = GETSTART;
 						break;
-				}
-				else {
+				} else {
 					gpsmsg.calculated_checksum = 0; //init to 0
 					state = GETPAYLOAD;
 				}
@@ -222,7 +230,7 @@ void processGPS(void){
 		//wait for payload_length-1 bytes;
 		if(GPS_available() > (gpsmsg.payload_length-1)){
 			for(uint16_t i = 0;i < gpsmsg.payload_length;i++){
-				uint8_t incomingbyte = GPS_getByte(); //take 1 byte from GPS buffer
+				uint8_t incomingbyte = GPS_getByte();
 				gpsmsg.payload[i] = incomingbyte;
 				gpsmsg.calculated_checksum ^= incomingbyte;
 			}
@@ -254,33 +262,36 @@ void processGPS(void){
 					state = GETSTART;
 					break;
 				}
-				state = VALIDATE;
-				break;//while
+
+				//validate CRC here then process the data
+				if(gpsmsg.calculated_checksum == gpsmsg.received_checksum) {
+					GPSstatus.payloadOK++;
+					HandlePayload(gpsmsg.payload,gpsmsg.payload_length); //process data
+				}
+				else {
+				GPSstatus.chksum_error++;
+				}
+				state = GETSTART;
 		}
-		break;//case
+		break;
+	}
+		/*
 	case VALIDATE:
 		//todo: timestamp/offset
 
 		//validate checksum
 		if(gpsmsg.calculated_checksum == gpsmsg.received_checksum) {
 			GPSstatus.payloadOK++;
-			//handle message
-			HandlePayload(gpsmsg.payload,gpsmsg.payload_length);
+			HandlePayload(gpsmsg.payload,gpsmsg.payload_length); //handle message
 		}
 		else {
 			GPSstatus.chksum_error++;
 		}
 		state = GETSTART;
 		break;
-	}
+*/
 
-	//non-blocking (1Hz copy)
-	if(FLAG_OKTOCOPYNAVDATA){
-		if ( xSemaphoreTake( mutex_NAVDATA, (BaseType_t)10)== pdTRUE){
-			NAVdata = tmpNAVdata;
-			FLAG_OKTOCOPYNAVDATA = 0;
-		xSemaphoreGive(mutex_NAVDATA);}
-	}
+
 
 }//end GPSprocess
 
@@ -370,5 +381,15 @@ uint8_t getGPS(GPS_pub* myGPS){
 	return 1;
 }
 
+//runs when a GPS related byte comes in via uart2. Called in rxcompleteISR in main.c
+void GPS_uart2Handler(void){
+	GPSstatus.chars_recvd++;
+	GPS_putByte(rx2Buff); //put byte in circular array
+
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	vTaskNotifyGiveFromISR( GPS_xTaskHandle, &xHigherPriorityTaskWoken );//unblock GPS process thread
+
+	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+}
 
 
