@@ -48,7 +48,7 @@ void GEIG_init() {
 //This function is called inside the EXT11 pin ISR handler on rising edge or (alternatively) via Usart3 RX pin handler.
 void GEIG_incClick() {
 
-	configASSERT(GEIGERcnt < 256);
+	//configASSERT(GEIGERcnt < 256);
 	GEIGERcnt++;
 }
 
@@ -155,7 +155,7 @@ void GEIG_processGEIGER(){
 		GEIG_logCPM();
 
 		//keep trying to copy data until resources are free
-		while ( !GEIG_cpyDATA() ){}
+		GEIG_cpyDATA();
 
 		//flag datardy to be published to CAN bus here?
 

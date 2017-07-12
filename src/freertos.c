@@ -52,6 +52,7 @@
 #include "SI7021.h"
 #include "GEIGER.h"
 #include "i2c.h"
+#include "CANpublisher.h"
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
@@ -116,8 +117,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
 
-  //put these in defines to turn on and off
-
   //GPS Sensor
   osThreadDef(GPSTask, GPSProcessTask, osPriorityNormal, 0, 128); //
   GPSTaskHandle = osThreadCreate(osThread(GPSTask), NULL);
@@ -129,7 +128,7 @@ void MX_FREERTOS_Init(void) {
   SI7021_init();
 
   //GEIGER counter
-  osThreadDef(GEIGERTask, GEIGERProcessTask, osPriorityNormal, 0, 128);
+  osThreadDef(GEIGERTask, GEIGERProcessTask, osPriorityRealtime, 0, 128);
   GEIGERTaskHandle = osThreadCreate(osThread(GEIGERTask), NULL);
   GEIG_init();
 
@@ -164,6 +163,7 @@ void StartDefaultTask(void const * argument)
 	getGPS(&myGPSPUB);
 	getSI7021(&mySIPUB);
 	getGEIGER(&myGEIGERPUB);
+	testCAN();
     osDelay(1200);
 
 
@@ -233,7 +233,7 @@ void GEIGERProcessTask(void const * argument)
   for(;;)
   {
 
-   GEIG_processGEIGER(); //request humidity and temperature data from si7021 via i2c and handle it
+   GEIG_processGEIGER(); //record CPS, sum and record CPM sliding window, reset gieger count
 
    //HAL_GPIO_TogglePin(GPIOD,LD5_Pin);
    //osDelay(200);

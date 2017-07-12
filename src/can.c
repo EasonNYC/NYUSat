@@ -44,10 +44,16 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "can.h"
-
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
+
+#include "FreeRTOS.h"
+#include "semphr.h"
+
+static SemaphoreHandle_t mutex_CANcomm = NULL;
+
+
 
 /* USER CODE END 0 */
 
@@ -84,6 +90,9 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
   {
   /* USER CODE BEGIN CAN1_MspInit 0 */
 
+	  mutex_CANcomm = xSemaphoreCreateMutex(); //create i2c1 mutex
+
+
   /* USER CODE END CAN1_MspInit 0 */
     /* Peripheral clock enable */
     __HAL_RCC_CAN1_CLK_ENABLE();
@@ -104,6 +113,8 @@ void HAL_CAN_MspInit(CAN_HandleTypeDef* canHandle)
   /* USER CODE END CAN1_MspInit 1 */
   }
 }
+
+
 
 void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
 {
@@ -129,6 +140,93 @@ void HAL_CAN_MspDeInit(CAN_HandleTypeDef* canHandle)
 } 
 
 /* USER CODE BEGIN 1 */
+
+
+typedef union u32pub{
+	uint32_t  u32;
+	uint8_t b[4];
+}u32pub;
+
+typedef union s32pub{
+	int32_t  f32;
+	uint8_t b[4];
+}s32pub;
+
+typedef union f32pub{
+	double  f32;
+	uint8_t b[4];
+}f32pub;
+
+void publish2CAN(uint8_t ARBID, uint32_t timestamp, uint32_t data) {
+
+	  u32pub t;
+	  u32pub d;
+
+	  t.u32 = timestamp;
+	  d.u32 = data;
+	  CanTxMsgTypeDef canmsg;
+	  canmsg.Data
+
+	  if ( xSemaphoreTake( mutex_CANcomm, portMAX_DELAY) == pdTRUE){
+
+	  hcan1.pTxMsg->StdId = ARBID; //unique msg ID / priority
+	  hcan1.pTxMsg->RTR = CAN_RTR_DATA; //broadcast
+	  hcan1.pTxMsg->IDE = CAN_ID_STD;
+
+	  hcan1.pTxMsg->DLC = 8; //msglen   (4bytes timestamp + 4bytes data)
+
+	  //assemble the message
+	  hcan1.pTxMsg->Data[0] = 0x6;
+	  hcan1.pTxMsg->Data[1] = 0xFF;
+	  	  hcan1.pTxMsg->Data[2] = 0xFF;
+	  	  hcan1.pTxMsg->Data[3] = 0xFF;
+
+	  	  hcan1.pTxMsg->Data[4] = 0xFF;
+	  	  hcan1.pTxMsg->Data[5] = 0xFF;
+	  	  hcan1.pTxMsg->Data[6] = 0xFF;
+	  	  hcan1.pTxMsg->Data[7] = 0xFF;
+
+	  /*
+	  hcan1.pTxMsg->Data[0] = t.b[0];
+	  hcan1.pTxMsg->Data[1] = t.b[1];
+	  hcan1.pTxMsg->Data[2] = t.b[2];
+	  hcan1.pTxMsg->Data[3] = t.b[3];
+
+	  hcan1.pTxMsg->Data[4] = d.b[0];
+	  hcan1.pTxMsg->Data[5] = d.b[1];
+	  hcan1.pTxMsg->Data[6] = d.b[2];
+	  hcan1.pTxMsg->Data[7] = d.b[3];
+
+	  //for debug    todo: comment this out later
+
+
+	  hcan1.pTxMsg->Data[0] = 0x6;
+	  hcan1.pTxMsg->Data[1] = 0xFF;
+	  hcan1.pTxMsg->Data[2] = 0xFF;
+	  hcan1.pTxMsg->Data[3] = 0xFF;
+
+	  hcan1.pTxMsg->Data[4] = 0xFF;
+	  hcan1.pTxMsg->Data[5] = 0xFF;
+	  hcan1.pTxMsg->Data[6] = 0xFF;
+	  hcan1.pTxMsg->Data[7] = 0xFF;
+	   */
+
+	  if(HAL_CAN_Transmit(&hcan1, 100) != HAL_OK)
+	  {
+	    /* Transmition Error */
+	   // Error_Handler();
+	  }
+
+	  if(HAL_CAN_GetState(&hcan1) != HAL_CAN_STATE_READY)
+	  	  {
+//	  	    return HAL_ERROR;
+	  	  }
+	  xSemaphoreGive(mutex_CANcomm);}//end CAN critical section
+
+}
+
+
+
 
 /* USER CODE END 1 */
 

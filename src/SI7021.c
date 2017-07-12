@@ -18,7 +18,6 @@ const uint8_t SIREG_TEMP = 0xE0; //get Temperature from previous RH measurement
 volatile uint8_t RHdata[2] = {0,0};
 volatile uint8_t TEMPdata[2] = {0,0};
 
-
 static volatile SI7021_pub tmpSI7021data;
 
 static SemaphoreHandle_t mutex_SI7021DATA = NULL;
@@ -28,7 +27,6 @@ void SI7021_init(void){
 	mutex_SI7021DATA = xSemaphoreCreateMutex();
 
 	//todo:ensure 25ms delay before taking first conversion
-
 }
 
 void processSI7021(void){ //conv req time = 12ms Rh_MAX + 10.8ms tempC_MAX = 22.8ms per RHcall.

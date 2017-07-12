@@ -86,7 +86,7 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
   {
   /* USER CODE BEGIN I2C1_MspInit 0 */
 
-	  mutex_I2C1comm = xSemaphoreCreateMutex(); //create i2c1 mutex
+	mutex_I2C1comm = xSemaphoreCreateMutex(); //create i2c1 mutex
 
   /* USER CODE END I2C1_MspInit 0 */
   

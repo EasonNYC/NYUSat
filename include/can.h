@@ -67,7 +67,7 @@ extern void Error_Handler(void);
 void MX_CAN1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-
+void publish2CAN(uint8_t ARBID, uint32_t timestamp, uint32_t data);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

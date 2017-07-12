@@ -238,14 +238,11 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c){
 
 //I2C rx received handler
 void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
-//printf("[data arrived]\n");
 
 	if(hi2c->Instance == I2C1){
 
-		//xQueueSendToBackFromISR(queue_GPS,&rx2Buff,NULL);
 		//task notify here?
 		i2cdatarec++;
-		//printf("rx:%x",hi2c->pBuffPtr);
 
 	}
 
@@ -289,9 +286,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
 /* USER CODE BEGIN Callback 1 */
   if (htim->Instance == TIM9) {   //1Hz Geiger timer
-	  ticks++;
-
-	  GEIG_tmrHandler();//process CPS,CPM, reset click count
+   ticks++;
+   GEIG_tmrHandler();//process CPS,CPM, reset click count
 
   }
 

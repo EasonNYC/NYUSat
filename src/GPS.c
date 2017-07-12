@@ -75,7 +75,7 @@ typedef struct NAVstruct { //payload of 59 bytes
 NAVstruct NAVdata, tmpNAVdata;//use for now
 
 
-typedef struct GPSmsg {//todo: add mcu timestamp or offset
+typedef struct GPSmsg {
    uint16_t payload_length;
    uint8_t payload[MAXPAYLOADLEN];
    uint8_t calculated_checksum;
@@ -154,7 +154,6 @@ uint8_t GPS_getByte(void){
 	buf_getbyte(&circarr,&b);
 	return b;
 }
-
 
 //Main GPS State Machine
 void processGPS(void){
@@ -275,22 +274,6 @@ void processGPS(void){
 		}
 		break;
 	}
-		/*
-	case VALIDATE:
-		//todo: timestamp/offset
-
-		//validate checksum
-		if(gpsmsg.calculated_checksum == gpsmsg.received_checksum) {
-			GPSstatus.payloadOK++;
-			HandlePayload(gpsmsg.payload,gpsmsg.payload_length); //handle message
-		}
-		else {
-			GPSstatus.chksum_error++;
-		}
-		state = GETSTART;
-		break;
-*/
-
 
 
 }//end GPSprocess
