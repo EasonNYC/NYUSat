@@ -106,14 +106,14 @@ void GPS_ProcessThread(void *pvParameters) {
 
 ## 📊 Engineering Impact
 
-This project demonstrates end-to-end embedded systems development from requirements through flight-ready implementation:
+This project demonstrated end-to-end embedded systems development from requirements through flight-ready implementation:
 
 - **Systems Integration**: Successfully coordinated hardware/software co-design with 4 other engineering disciplines
 - **Real-World Constraints**: Met NASA's strict reliability, power, and size requirements for space applications
 - **Technical Leadership**: Managed complex multi-sensor integration with real-time performance guarantees
 - **Innovation**: Developed custom algorithms for radiation detection and GPS synchronization in resource-constrained environment
 
-The mission science payload was designed to autonomously collect and process scientific data during the satellite's 90-day orbital mission, showcasing the kind of robust embedded systems used in modern aerospace applications.
+The mission science payload was designed to autonomously collect and process scientific data during the satellite's 90-day orbital mission.
 
 ---
 
@@ -147,9 +147,7 @@ The mission science payload was designed to autonomously collect and process sci
 
 ## 🔗 Links & Resources
 
-- **Portfolio**: [EasonRobotics.com CubeSAT Project](http://www.easonrobotics.com/?portfolio=nyu-cubesat)
 - **NASA CubeSAT Info**: [NASA CubeSat Launch Initiative](https://www.nasa.gov/directorates/heo/home/CubeSats_initiative)
-- **Technical Documentation**: [Full Technical Report (PDF)](http://www.easonrobotics.com/CubeSAT.pdf)
 
 ---
 
