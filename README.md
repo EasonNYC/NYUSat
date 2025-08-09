@@ -11,6 +11,10 @@
 
 ---
 
+<div align="center">
+  <img src="https://easonnyc.github.io/portfolio/assets/images/cubesat.jpg" alt="NYU CubeSAT" width="600">
+</div>
+
 ## 📡 Project Overview
 
 As the **embedded software engineer** on NYU's CubeSAT team, I developed the mission science payload system for a 1U CubeSAT designed to collect weather-related scientific data as part of **NASA's CubeSat Launch Initiative (CSLI)**.
